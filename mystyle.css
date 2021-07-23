@@ -4,3 +4,8 @@ body {
   align-items:center;
 
 }
+
+@font-face {
+    font-family: 'PressStart2P';
+    src: 'font/PressStart2P.tff';
+}

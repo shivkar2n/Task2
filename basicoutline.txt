@@ -1,8 +1,0 @@
-Main player:
-- Position x,y (int,int)
-- Score (int)
-- Health (int)
-
-Enemies:
-- Position x,y (int,int)
-- Direction ()
