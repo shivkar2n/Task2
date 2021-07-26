@@ -4,6 +4,7 @@ function Launch() {
   var background = new Image();
   background.src = 'background.png';
   var breakOutLoop;
+  var val = 1;
 
 // Intialize high score as cookies set to zero
   if (!sessionStorage.getItem('scoreListKey')) {
@@ -13,7 +14,7 @@ function Launch() {
   var mainPlayerScore = 0;
   var mainPlayerX = 400;
   var mainPlayerY = 400;
-  var mainPlayerVelocity = 0.02;
+  var mainPlayerVelocity = 0.01;
   var mainPlayer = new Image(50,50);
   mainPlayer.src = 'mainPlayer.png';
 
@@ -46,24 +47,31 @@ function Launch() {
   enemyImg.src = 'enemy.png';
   var enemyDir = 0;
   var enemyVelocity = 1;
+  var noOfRows = 4;
+  var noOfCols = 6;
+  var noOfEnemies = noOfRows*noOfCols;
 
 // Enemy properties
   function Enemy(x,y) {
     this.posX = x;
     this.posY = y;
   }
-
-// 8 enemies in a single row
   var enemyList = new Array();
-  for (var j = 0; j < 4 ; j++) {
-    var enemyRow = new Array();
-    for (var i = 0; i < 8; i++) {
-      var E1 = new Enemy(i*60,50 + 50*j);
-      enemyRow.push(E1);
-      E1 = null;
+
+  function EnemyInitialize() {
+// No of rows and columns of enemies
+    for (var j = 0; j < noOfRows ; j++) {
+      var enemyRow = new Array();
+      for (var i = 0; i < noOfCols; i++) {
+        var E1 = new Enemy(i*60,50 + 50*j);
+        enemyRow.push(E1);
+        E1 = null;
+      }
+      enemyList.push(enemyRow);
+      enemyRow = null;
     }
-    enemyList.push(enemyRow);
-    enemyRow = null;
+    enemyDir = 0;
+    noOfEnemies = noOfCols * noOfRows;
   }
 
   var ctx = document.getElementById('canvas').getContext('2d');
@@ -83,33 +91,23 @@ function Launch() {
   function EnemyPhysics() {
     for (let enemy of enemyList){
       for (let e of enemy) {
-        ctx.drawImage(enemyImg,e.posX,e.posY);
-        e.posX += enemyVelocity;
-
         if (e.posY > 400) {
           GameOver();
-        }
-        if (enemyDir < 0) {
-          e.posY += 5;
-          if (e.posY > 225) {
-            enemyVelocity = 2;
           }
-          else {
-            enemyVelocity = 1;
+        else if (enemyDir > 240) {
+          e.posY += 20;
+          enemyVelocity = -1 * val;
           }
-        }
-        else if (enemyDir > 140) {
-          e.posY += 5;
-          if (e.posY > 225) {
-            enemyVelocity = -2;
+        else if(enemyDir < 0) {
+          e.posY += 20;
+          enemyVelocity = 1 * val;
           }
-          else {
-            enemyVelocity = -1;
+        else {
+          e.posX += enemyVelocity;
           }
         }
       }
     }
-  }
 
   function GameOver() {
     alert(`Game Over!\nScore:${mainPlayerScore}\n`);
@@ -119,6 +117,8 @@ function Launch() {
     window.location.reload();
   }
 
+// Intialize the all the enemies
+  EnemyInitialize();
   function MainLoop() {
     ctx.save();
     ctx.drawImage(background,0,0);
@@ -174,9 +174,6 @@ function Launch() {
         }
       });
 
-    EnemyPhysics();
-    enemyDir += enemyVelocity;
-
 // If Collision occurs enemy is removed from screen
     for (let enemy of enemyList) {
       for (let e of enemy) {
@@ -188,10 +185,12 @@ function Launch() {
           const index = enemy.indexOf(e);
           if (index > -1) {
             enemy.splice(index, 1);
+            noOfEnemies -= 1;
             mainPlayerScore += 5;
-            mainPlayerVelocity -= 0.0005;
+            mainPlayerVelocity -= 0.00005;
             breakOutLoop = 1;
             bullet.status = 1;
+            val += 0.1
             break;
           }
         }
@@ -211,13 +210,24 @@ function Launch() {
       bullet.UpdatePos();
     }
 
+    enemyDir += enemyVelocity;
+    EnemyPhysics();
+
+    if (noOfEnemies === 0){
+      EnemyInitialize();
+    }
+
     ctx.fillText(`Score : ${mainPlayerScore}`, 20,30);
     ctx.fillText(`High Score: ${sessionStorage.getItem("scoreListKey")}`, 20,50);
-    // ctx.fillText(`No of kills: ${}`, 20,400);
+    ctx.fillText(`Velocity: ${mainPlayerVelocity}`, 20,70);
+    for (let enemy of enemyList){
+      for (let e of enemy) {
+        ctx.drawImage(enemyImg,e.posX,e.posY);
+      }
+    }
     ctx.drawImage(mainPlayer,mainPlayerX,mainPlayerY);
     ctx.restore();
     window.requestAnimationFrame(MainLoop);
   }
   window.requestAnimationFrame(MainLoop);
-
 }
