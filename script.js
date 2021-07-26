@@ -3,23 +3,42 @@ function Launch() {
 // initializing the canvas and variables
   var background = new Image();
   background.src = 'background.png';
+  var breakOutLoop;
 
-// Mainplayer position and mapping
+// Intialize high score as cookies set to zero
+  if (!sessionStorage.getItem('scoreListKey')) {
+    sessionStorage.setItem('scoreListKey', 0);
+  }
+
   var mainPlayerScore = 0;
-  var mainPlayerX = 200;
-  var mainPlayerY = 200;
+  var mainPlayerX = 400;
+  var mainPlayerY = 400;
+  var mainPlayerVelocity = 0.02;
   var mainPlayer = new Image(50,50);
   mainPlayer.src = 'mainPlayer.png';
 
-// Bullet position
+// Bullet object properties
   var bulletImg = new Image();
   bulletImg.src = 'bullet.png';
 
   var bullet = {
     posX: null,
     posY: null,
-    fired: 0,
-    moving: 0,
+    status: 1,
+
+// Initiliaze starting position of bullet
+    StartPos: function() {
+      this.posX = mainPlayerX + 12;
+      this.posY = mainPlayerY + 10;
+      this.status = 0;
+    },
+
+// Update position of bullet
+    UpdatePos: function() {
+      ctx.drawImage(bulletImg,bullet.posX,bullet.posY);
+      bullet.posY -= 2;
+      bullet.status = 0;
+    }
   }
 
 // Enemy position and mapping
@@ -36,10 +55,15 @@ function Launch() {
 
 // 8 enemies in a single row
   var enemyList = new Array();
-  for (var i = 0; i < 8; i++) {
-    var E1 = new Enemy(50 + i*50,50);
-    enemyList.push(E1);
-    E1 = null;
+  for (var j = 0; j < 4 ; j++) {
+    var enemyRow = new Array();
+    for (var i = 0; i < 8; i++) {
+      var E1 = new Enemy(i*60,50 + 50*j);
+      enemyRow.push(E1);
+      E1 = null;
+    }
+    enemyList.push(enemyRow);
+    enemyRow = null;
   }
 
   var ctx = document.getElementById('canvas').getContext('2d');
@@ -48,46 +72,51 @@ function Launch() {
   ctx.font = "20px PressStart2P";
   ctx.fillStyle = "white";
 
-// Checks if bullet is out of boundary
-  function OutOfBounds(posY,moving) {
-    if (posY < 20 && moving === 1) {
-      return 0;
-    }
-  }
-
-  function StartPos() {
-    if (bullet.fired === 1) {
-      bullet.posX = mainPlayerX + 12;
-      bullet.posY = mainPlayerY + 10;
-      bullet.fired = 0;
-    }
-  }
-
-// Checks collision between two objects
-  function collision(X1,Y1,X2,Y2) {
-    if ( Math.sqrt((X1-X2)**2 + (Y1-Y2)**2) < 20) {
-      return 0;
-    }
-    else {
+// Checks Collision between two objects
+  function Collision(X1,Y1,X2,Y2) {
+    if (Math.sqrt((X1-X2)**2 + (Y1-Y2)**2) < 25) {
       return 1;
     }
   }
 
 // Ensures enemy is within the boundary
-  function EnemyStatus(){
-    for (let e of enemyList) {
+  function EnemyPhysics() {
+    for (let enemy of enemyList){
+      for (let e of enemy) {
         ctx.drawImage(enemyImg,e.posX,e.posY);
         e.posX += enemyVelocity;
+
+        if (e.posY > 400) {
+          GameOver();
+        }
         if (enemyDir < 0) {
           e.posY += 5;
-          enemyVelocity = 1;
-
+          if (e.posY > 225) {
+            enemyVelocity = 2;
+          }
+          else {
+            enemyVelocity = 1;
+          }
         }
-        else if (enemyDir > 150) {
+        else if (enemyDir > 140) {
           e.posY += 5;
-          enemyVelocity = -1;
+          if (e.posY > 225) {
+            enemyVelocity = -2;
+          }
+          else {
+            enemyVelocity = -1;
+          }
         }
+      }
     }
+  }
+
+  function GameOver() {
+    alert(`Game Over!\nScore:${mainPlayerScore}\n`);
+    if (mainPlayerScore > sessionStorage.getItem("scoreListKey")) {
+      sessionStorage.setItem("scoreListKey", mainPlayerScore);
+    }
+    window.location.reload();
   }
 
   function MainLoop() {
@@ -99,7 +128,7 @@ function Launch() {
 
       if (keyName === 'ArrowRight') {
         if (!(mainPlayerX > 550)) {
-          mainPlayerX += 0.02;
+          mainPlayerX += mainPlayerVelocity;
         }
         else {
           return ;
@@ -108,7 +137,7 @@ function Launch() {
 
       if (keyName === 'ArrowLeft') {
         if (!(mainPlayerX < 14)) {
-          mainPlayerX -= 0.02;
+          mainPlayerX -= mainPlayerVelocity;
         }
         else {
           return ;
@@ -117,7 +146,7 @@ function Launch() {
 
       if (keyName === 'ArrowDown') {
         if (!(mainPlayerY > 400)) {
-          mainPlayerY += 0.02;
+          mainPlayerY += mainPlayerVelocity;
         }
         else {
           return;
@@ -126,7 +155,7 @@ function Launch() {
 
       if (keyName === 'ArrowUp') {
         if (!(mainPlayerY < 10)) {
-          mainPlayerY -= 0.02;
+          mainPlayerY -= mainPlayerVelocity;
         }
         else {
           return ;
@@ -137,55 +166,58 @@ function Launch() {
     document.addEventListener('keypress', (event) => {
       const keyName = event.key;
 
-// On spacebar keypress bullet is fired and moving
+// On spacebar keypress Intialize bullet position
       if (keyName === ' ') {
-        bullet.fired = 1;
-        bullet.moving = 1;
+        if (bullet.status === 1) {
+          bullet.StartPos();
+          }
         }
       });
 
-// Check if bullet is fired and intialize position
-    if (bullet.fired) {
-      StartPos();
-    }
-
-// Update bullet only if it is not out of screen
-    if (!(OutOfBounds(bullet.posY, bullet.moving))) {
-      console.log("Executed");
-      ctx.drawImage(bulletImg,bullet.posX,bullet.posY);
-      bullet.posY -= 2;
-    }
-
-// If collision occurs enemy is removed from screen
-    for (let e of enemyList) {
-      if (!(collision(bullet.posX, bullet.posY, e.posX, e.posY))) {
-        const index = enemyList.indexOf(e);
-
-        if (index > -1) {
-          enemyList.splice(index, 1);
-          mainPlayerScore += 5;
-        }
-      }
-      if (!(collision(mainPlayerX, mainPlayerY, e.posX, e.posY))) {
-          alert(`Game Over!\nScore:${mainPlayerScore}`);
-          return;
-        }
-      }
-
-    EnemyStatus();
+    EnemyPhysics();
     enemyDir += enemyVelocity;
 
+// If Collision occurs enemy is removed from screen
+    for (let enemy of enemyList) {
+      for (let e of enemy) {
+        if (Collision(mainPlayerX, mainPlayerY, e.posX, e.posY)) {
+          GameOver();
+        }
+
+        if (Collision(bullet.posX, bullet.posY, e.posX, e.posY)) {
+          const index = enemy.indexOf(e);
+          if (index > -1) {
+            enemy.splice(index, 1);
+            mainPlayerScore += 5;
+            mainPlayerVelocity -= 0.0005;
+            breakOutLoop = 1;
+            bullet.status = 1;
+            break;
+          }
+        }
+      }
+      if (breakOutLoop) {
+        breakOutLoop = 0;
+        break;
+      }
+    }
+
+// Update bullet only if it is not outside of border
+    if (bullet.posY < 20){
+      bullet.status = 1;
+    }
+
+    if (!bullet.status){
+      bullet.UpdatePos();
+    }
+
     ctx.fillText(`Score : ${mainPlayerScore}`, 20,30);
-    // ctx.fillText(`enemyX : ${enemyList[1].posX}`, 20,30);
-    // ctx.fillText(`enemyY: ${enemyList[1].posY}`, 20,50);
-    // ctx.fillText(`enemyDir: ${enemyDir}`, 20,70);
+    ctx.fillText(`High Score: ${sessionStorage.getItem("scoreListKey")}`, 20,50);
+    // ctx.fillText(`No of kills: ${}`, 20,400);
     ctx.drawImage(mainPlayer,mainPlayerX,mainPlayerY);
     ctx.restore();
     window.requestAnimationFrame(MainLoop);
-
-
   }
-
-  ctx.fillText("Game Over!", 200,200);
   window.requestAnimationFrame(MainLoop);
+
 }
